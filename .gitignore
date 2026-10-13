@@ -1,0 +1,6 @@
+# Google secrets – never commit these
+credentials.json
+token.json
+captures/
+__pycache__/
+.venv/
