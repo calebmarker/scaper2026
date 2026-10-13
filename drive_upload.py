@@ -10,6 +10,8 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
+from evidence_log import file_hash
+
 # drive.file only grants access to files this app creates – nothing else in your Drive.
 SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 FOLDER_MIME = "application/vnd.google-apps.folder"
@@ -61,7 +63,9 @@ class DriveUploader:
     def ensure_folder(self, name: str) -> str:
         return self._find_or_create_folder(name, self.root_id)
 
-    def upload(self, path: Path, folder_id: str, mime_type: str) -> str:
+    def upload(self, path: Path, folder_id: str, mime_type: str) -> tuple[str, bool]:
+        """Upload a file; return (Drive file ID, whether Drive's MD5 matches the local file)."""
         media = MediaFileUpload(str(path), mimetype=mime_type, resumable=True)
         meta = {"name": path.name, "parents": [folder_id]}
-        return self.service.files().create(body=meta, media_body=media, fields="id").execute()["id"]
+        result = self.service.files().create(body=meta, media_body=media, fields="id,md5Checksum").execute()
+        return result["id"], result.get("md5Checksum") == file_hash(path, "md5")
